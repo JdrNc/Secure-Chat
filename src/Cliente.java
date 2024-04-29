@@ -28,6 +28,8 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
 public class Cliente extends JFrame implements ActionListener, KeyListener {
     private static final long serialVersionUID = 1L;
+
+    private JTextArea onlineP;
     private JTextArea texto;
     private JTextField txtMsg;
     private JButton btnSend;
@@ -56,6 +58,9 @@ public class Cliente extends JFrame implements ActionListener, KeyListener {
         texto              = new JTextArea(10,20);
         texto.setEditable(false);
         texto.setBackground(new Color(240,240,240));
+        onlineP = new JTextArea(10, 10);
+        onlineP.setEditable(false);
+        onlineP.setBackground(new Color(144, 168, 119));
         txtMsg                       = new JTextField(20);
         lblHistorico     = new JLabel("Histórico");
         lblMsg        = new JLabel("Mensagem");
@@ -82,7 +87,7 @@ public class Cliente extends JFrame implements ActionListener, KeyListener {
         setContentPane(pnlContent);
         setLocationRelativeTo(null);
         setResizable(false);
-        setSize(300,350);
+        setSize(500,350);
         setVisible(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
     }
@@ -99,7 +104,7 @@ public class Cliente extends JFrame implements ActionListener, KeyListener {
 
     public void enviarMensagem(String msg) throws IOException{
 
-        if(msg.equals("Sair")){
+        if(msg.equals("UserExitTheRoomMsg")){
             bfw.write("Desconectado \r\n");
             texto.append("Desconectado \r\n");
         }else{
@@ -116,11 +121,11 @@ public class Cliente extends JFrame implements ActionListener, KeyListener {
         BufferedReader bfr = new BufferedReader(inr);
         String msg = "";
 
-        while(!"Sair".equalsIgnoreCase(msg))
+        while(!"UserExitTheRoomMsg".equalsIgnoreCase(msg))
 
             if(bfr.ready()){
                 msg = bfr.readLine();
-                if(msg.equals("Sair"))
+                if(msg.equals("UserExitTheRoomMsg"))
                     texto.append("Servidor caiu! \r\n");
                 else
                     texto.append(msg+"\r\n");
@@ -128,7 +133,7 @@ public class Cliente extends JFrame implements ActionListener, KeyListener {
     }
     public void sair() throws IOException{
 
-        enviarMensagem("Sair");
+        enviarMensagem("UserExitTheRoomMsg");
         bfw.close();
         ouw.close();
         ou.close();
