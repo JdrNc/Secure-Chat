@@ -44,7 +44,6 @@ public class Server {
                 executor.execute(new ClientHandler(socket));
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }finally {
             executor.shutdown();
         }
@@ -110,7 +109,6 @@ public class Server {
                 newClient(clientesConectados.toString(), writer);
                 socket.close();
             } catch (Exception e) {
-                e.printStackTrace();
             }
         }
         private void newClient(String clientsConnected, PrintWriter writer){

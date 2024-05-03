@@ -73,32 +73,42 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
         ou = socket.getOutputStream();
         ouw = new OutputStreamWriter(ou);
         bfw = new BufferedWriter(ouw);
-        bfw.write(txtNome.getText()+"\r\n");
-        bfw.flush();
+        try {
+            String encryptName = encrypt(txtNome.getText());
+            bfw.write(encryptName+"\r\n");
+            chatAll.append(txtNome.getText() + " entrou no chat\r\n");
+            bfw.flush();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public void enviarMensagem(String msg) throws IOException{
 
-        if(msg.equals("UserExitTheRoomMsg")){
-            try {
-                String disconected = "";
-                disconected = encrypt("Desconectado");
-                bfw.write(disconected + "\r\n");
-                chatAll.append("Desconectado \r\n");
-            } catch (Exception e){}
+        if(!(msg.isEmpty())) {
+            if (msg.equals("UserExitTheRoomMsg")) {
+                try {
+                    String disconected = "";
+                    disconected = encrypt("Desconectado");
+                    bfw.write(disconected + "\r\n");
+                    chatAll.append("Desconectado \r\n");
+                } catch (Exception e) {
+                }
 
-        }else{
-            try {
-                String encodedMsg = encrypt(msg);
-                bfw.write(encodedMsg+"\r\n");
+            } else {
+                try {
+                    String encodedMsg = encrypt(msg);
+                    bfw.write(encodedMsg + "\r\n");
 //                System.out.println( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
-                chatAll.append( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+                    chatAll.append(txtNome.getText() + " diz -> " + msgEnviar.getText() + "\r\n");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
+            bfw.flush();
+            msgEnviar.setText("");
         }
-        bfw.flush();
-        msgEnviar.setText("");
     }
     public void escutar() throws IOException{
 
@@ -155,7 +165,6 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
     }
 
     public void sair() throws IOException{
-
         enviarMensagem("UserExitTheRoomMsg");
         bfw.close();
         ouw.close();
@@ -173,7 +182,6 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
                 sair();
         } catch (IOException e1) {
             // TODO Auto-generated catch block
-            e1.printStackTrace();
         }
     }
     @Override
@@ -184,7 +192,6 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
                 enviarMensagem(msgEnviar.getText());
             } catch (IOException e1) {
                 // TODO Auto-generated catch block
-                e1.printStackTrace();
             }
         }
     }
@@ -205,9 +212,9 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
             cipher = Cipher.getInstance("AES");
         } catch (Exception e){}
 
+
         nc.conectar();
         nc.escutar();
-
     }
 
 }
