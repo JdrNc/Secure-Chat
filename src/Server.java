@@ -16,6 +16,7 @@ public class Server {
     private static Cipher cipher;
 
     private static List<PrintWriter> clientes = new ArrayList<PrintWriter>();
+    private static List<String> clientesConectados = new ArrayList<String>();
 
     public static void main(String[] args) {
         ExecutorService executor = Executors.newFixedThreadPool(10);
@@ -31,6 +32,7 @@ public class Server {
             // Inicia o servidor na porta 12345
             ServerSocket serverSocket = new ServerSocket(12345);
             System.out.println("Servidor iniciado...");
+            clientesConectados.add("newClientPass");
 
             while (true) {
                 // Aceita conexões de clientes
@@ -69,25 +71,37 @@ public class Server {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                 PrintWriter writer = new PrintWriter(outputStream, true);
                 clientes.add(writer);
-
+                int indexofMe;
                 String message;
                 String nome;
+                //Envia chave pro cliente novo
+                String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());
+                writer.println("key:" + encodedKey);
+
                 String messageForChat;
                 nome = message = reader.readLine();
 
 //                String encodedKey = reader.readLine();
 //                byte[] decodedKey = Base64.getDecoder().decode(encodedKey);
 //                secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-
+                clientesConectados.add(nome);
+                indexofMe = clientesConectados.size() - 1;
+                System.out.println(indexofMe + " " + clientesConectados);
+                newClient(clientesConectados, writer);
                 messageForChat = nome + " entrou no chat";
                 System.out.println(messageForChat);
+
+
                 sendToAll(writer, messageForChat);
 
                 // Loop para receber e enviar mensagens
 
+
+
                 while (!("UserExitTheRoomMsg".equalsIgnoreCase(message)) && (message = reader.readLine()) != null) {
 
                     messageForChat = nome + " diz -> " + message;
+                    System.out.println(messageForChat);
                     sendToAll(writer, messageForChat);
 
 
@@ -112,10 +126,20 @@ public class Server {
                 }
 
                 // Fecha o socket
+                clientesConectados.remove(indexofMe);
+                newClient(clientesConectados, writer);
                 socket.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+        private void newClient(List clientsConnected, PrintWriter writer){
+            PrintWriter wr;
+            for(PrintWriter wrs : clientes){
+                    wrs.println(clientsConnected);
+            }
+
+
         }
         //Manda a mensagem para todos os clientes
         private void sendToAll(PrintWriter writer, String msg) {
