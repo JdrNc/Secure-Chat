@@ -76,70 +76,52 @@ public class Server {
                 String nome;
                 //Envia chave pro cliente novo
                 String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());
-                writer.println("key:" + encodedKey);
+                System.out.println(Base64.getEncoder().encodeToString(secretKey.getEncoded()));
+                writer.println(encodedKey);
 
                 String messageForChat;
                 nome = message = reader.readLine();
-
-//                String encodedKey = reader.readLine();
-//                byte[] decodedKey = Base64.getDecoder().decode(encodedKey);
-//                secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+                String encodedMessage;
                 clientesConectados.add(nome);
                 indexofMe = clientesConectados.size() - 1;
                 System.out.println(indexofMe + " " + clientesConectados);
-                newClient(clientesConectados, writer);
+                newClient(clientesConectados.toString(), writer);
                 messageForChat = nome + " entrou no chat";
+                encodedMessage = encrypt(messageForChat);
                 System.out.println(messageForChat);
 
 
-                sendToAll(writer, messageForChat);
+                sendToAll(writer, encodedMessage);
 
                 // Loop para receber e enviar mensagens
-
-
-
                 while (!("UserExitTheRoomMsg".equalsIgnoreCase(message)) && (message = reader.readLine()) != null) {
 
-                    messageForChat = nome + " diz -> " + message;
-                    System.out.println(messageForChat);
-                    sendToAll(writer, messageForChat);
+                    String decodedMsg = decrypt(message);
+                    messageForChat = nome + " diz -> " + decodedMsg;
+                    encodedMessage = encrypt(messageForChat);
+                    System.out.println(encodedMessage);
+                    sendToAll(writer, encodedMessage);
 
 
-
-//                    System.out.println("Thread id: " + Thread.currentThread().getId() + " Task:" +  message);
-//                    System.out.println("Mensagem recebida do cliente: " + message);
-//
-//                    // Decifra a mensagem recebida
-//                    String decryptedMessage = decrypt(message);
-//                    System.out.println("Mensagem decifrada: " + decryptedMessage);
-//
-//                    //Pega só o número da mensagem
-//                    String[] splitedMessage = decryptedMessage.split(" ");
-//
-//                    //Calcula fatorial
-//                    int numFat = Integer.parseInt(splitedMessage[1]);
-//                    System.out.println(numFat);
-//                   Long resultFat = calculateFactorial(numFat);
-//
-//                    // Responde ao cliente
-//                    writer.println("Mensagem recebida referente a: " + decryptedMessage + " Resultado: " + resultFat);
                 }
 
                 // Fecha o socket
                 clientesConectados.remove(indexofMe);
-                newClient(clientesConectados, writer);
+                newClient(clientesConectados.toString(), writer);
                 socket.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        private void newClient(List clientsConnected, PrintWriter writer){
+        private void newClient(String clientsConnected, PrintWriter writer){
             PrintWriter wr;
             for(PrintWriter wrs : clientes){
-                    wrs.println(clientsConnected);
+                try {
+                    wrs.println(encrypt(clientsConnected));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
-
-
         }
         //Manda a mensagem para todos os clientes
         private void sendToAll(PrintWriter writer, String msg) {
@@ -151,12 +133,18 @@ public class Server {
                 }
             }
         }
-        // Método para decifrar uma mensagem utilizando AES
+        // Método para decriptar uma mensagem utilizando AES
         private String decrypt(String encryptedMessage) throws Exception {
             cipher.init(Cipher.DECRYPT_MODE, secretKey);
             byte[] decodedMessage = Base64.getDecoder().decode(encryptedMessage);
             byte[] decryptedBytes = cipher.doFinal(decodedMessage);
             return new String(decryptedBytes);
+        }
+        //Método para encriptar a mensagem a ser enviada utilizando AES
+        private static String encrypt(String message) throws Exception {
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte[] encryptedBytes = cipher.doFinal(message.getBytes());
+            return Base64.getEncoder().encodeToString(encryptedBytes);
         }
     }
 }

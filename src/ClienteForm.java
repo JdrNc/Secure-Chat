@@ -1,3 +1,5 @@
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
@@ -16,13 +18,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 public class ClienteForm extends JFrame implements ActionListener, KeyListener{
     private static SecretKey secretKey;
     private JLabel chatLabel;
     private JTextArea chatAll;
-
+    private static Cipher cipher;
     private JTextField txtIP;
     private JTextField txtPorta;
     private JTextField txtNome;
@@ -32,7 +35,9 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
     private JTextArea onlinePeople;
     private JPanel pnlContent;
     private JTextField msgEnviar;
-    private JScrollBar scrollBar1;
+    private JLabel empetyLabel;
+    private JLabel empetyLabel2;
+    private JLabel empetyLabel3;
     private Socket socket;
     private OutputStream ou;
     private Writer ouw;
@@ -45,7 +50,6 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
         Object[] texts = {lblMessage, txtIP, txtPorta, txtNome };
         JOptionPane.showMessageDialog(null, texts);
         chatAll.setEditable(false);
-//        chatAll.setBackground(new Color(0,0,0));
         onlinePeople.setEditable(false);
         btnSend.setToolTipText("Enviar Mensagem");
         btnSair.setToolTipText("Sair do Chat");
@@ -58,7 +62,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
         setContentPane(pnlContent);
         setLocationRelativeTo(null);
         setResizable(false);
-        setSize(500,350);
+        setSize(500,550);
         setVisible(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
     }
@@ -76,12 +80,22 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
     public void enviarMensagem(String msg) throws IOException{
 
         if(msg.equals("UserExitTheRoomMsg")){
-            bfw.write("Desconectado \r\n");
-            chatAll.append("Desconectado \r\n");
+            try {
+                String disconected = "";
+                disconected = encrypt("Desconectado");
+                bfw.write(disconected + "\r\n");
+                chatAll.append("Desconectado \r\n");
+            } catch (Exception e){}
+
         }else{
-            bfw.write(msg+"\r\n");
-            System.out.println( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
-            chatAll.append( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
+            try {
+                String encodedMsg = encrypt(msg);
+                bfw.write(encodedMsg+"\r\n");
+//                System.out.println( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
+                chatAll.append( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
         bfw.flush();
         msgEnviar.setText("");
@@ -92,28 +106,52 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
         InputStreamReader inr = new InputStreamReader(in);
         BufferedReader bfr = new BufferedReader(inr);
         String msg = "";
+        msg = bfr.readLine();
+        System.out.println(msg);
 
-        while(!"UserExitTheRoomMsg".equalsIgnoreCase(msg))
+        //Recebe chave do servidor
+            byte[] decodedKey = Base64.getDecoder().decode(msg);
+            secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
 
-            if(bfr.ready()){
+        while(!"UserExitTheRoomMsg".equalsIgnoreCase(msg)) {
+            String decodedMsg = null;
+            if (bfr.ready()) {
                 msg = bfr.readLine();
-                if(msg.equals("UserExitTheRoomMsg"))
+                System.out.println(msg);
+                try {
+                    decodedMsg = decrypt(msg);
+                    System.out.println(decodedMsg);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                if (msg.equals("UserExitTheRoomMsg")){
                     chatAll.append("Servidor caiu! \r\n");
-                else if(msg.contains("key:")){
-                   String encodedKey =  msg.replace("key:", "");
-                    byte[] decodedKey = Base64.getDecoder().decode(encodedKey);
-                    secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-
-                } else if(msg.contains("newClientPass")){
+                }
+                else if(decodedMsg.contains("newClientPass")){
                     onlinePeople.setText("");
-                    String[] newNome = msg.replace("newClientPass", "").replace("[", "").replace("]", "").split(", ");
-                    for(String nome : newNome){
+                    String[] newNome = decodedMsg.replace("newClientPass", "").replace("[", "").replace("]", "").split(", ");
+                    for (String nome : newNome) {
                         onlinePeople.append(nome + "\r\n");
                     }
+                }else{
+                        chatAll.append(decodedMsg + "\r\n");
+                    }
 
-                } else
-                    chatAll.append(msg+"\r\n");
             }
+        }
+    }
+
+    private static String encrypt(String message) throws Exception {
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte[] encryptedBytes = cipher.doFinal(message.getBytes());
+        return Base64.getEncoder().encodeToString(encryptedBytes);
+    }
+
+    private String decrypt(String encryptedMessage) throws Exception {
+        cipher.init(Cipher.DECRYPT_MODE, secretKey);
+        byte[] decodedMessage = Base64.getDecoder().decode(encryptedMessage);
+        byte[] decryptedBytes = cipher.doFinal(decodedMessage);
+        return new String(decryptedBytes);
     }
 
     public void sair() throws IOException{
@@ -161,10 +199,15 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener{
         // TODO Auto-generated method stub
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException{
         ClienteForm nc = new ClienteForm();
+        try {
+            cipher = Cipher.getInstance("AES");
+        } catch (Exception e){}
+
         nc.conectar();
         nc.escutar();
+
     }
 
 }
