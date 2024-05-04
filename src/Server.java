@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 public class Server {
     private static SecretKey secretKey;
@@ -17,6 +18,8 @@ public class Server {
 
     private static List<PrintWriter> clientes = new ArrayList<PrintWriter>();
     private static List<String> clientesConectados = new ArrayList<String>();
+
+    private static final Semaphore semaphore = new Semaphore(1);
 
     public static void main(String[] args) {
         ExecutorService executor = Executors.newFixedThreadPool(10);
@@ -91,16 +94,23 @@ public class Server {
                 System.out.println(messageForChat);
 
 
-                sendToAll(writer, encodedMessage);
+//                sendToAll(writer, encodedMessage);
 
                 // Loop para receber e enviar mensagens
                 while (!("UserExitTheRoomMsg".equalsIgnoreCase(message)) && (message = reader.readLine()) != null) {
+                    try{
+                        semaphore.acquire();
+                        String decodedMsg = decrypt(message);
+                        messageForChat = nome + " diz -> " + decodedMsg;
+                        encodedMessage = encrypt(messageForChat);
+                        System.out.println(encodedMessage);
+                        sendToAll(writer, encodedMessage);
+                    } catch (Exception e){
 
-                    String decodedMsg = decrypt(message);
-                    messageForChat = nome + " diz -> " + decodedMsg;
-                    encodedMessage = encrypt(messageForChat);
-                    System.out.println(encodedMessage);
-                    sendToAll(writer, encodedMessage);
+                    } finally {
+                        semaphore.release();
+                    }
+
 
 
                 }
