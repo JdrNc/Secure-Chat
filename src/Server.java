@@ -30,7 +30,7 @@ public class Server {
             cipher = Cipher.getInstance("AES");
 
             // Inicia o servidor na porta 12345
-            ServerSocket serverSocket = new ServerSocket(12345);
+            ServerSocket serverSocket = new ServerSocket(12347);
             System.out.println("Servidor iniciado...");
             clientesConectados.add("newClientPass");
 
