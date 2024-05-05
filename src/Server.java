@@ -19,10 +19,8 @@ public class Server {
     private static List<PrintWriter> clientes = new ArrayList<PrintWriter>();
     private static List<String> clientesConectados = new ArrayList<String>();
 
-    private static final Semaphore semaphore = new Semaphore(1);
-
     public static void main(String[] args) {
-        ExecutorService executor = Executors.newFixedThreadPool(10);
+        ExecutorService executor = Executors.newFixedThreadPool(100);
         try {
             // Inicializa o gerador de chaves AES
             KeyGenerator keygen = KeyGenerator.getInstance("AES");
@@ -56,7 +54,7 @@ public class Server {
     // Classe interna para lidar com cada cliente em uma thread separada
     static class ClientHandler extends Thread {
         private final Socket socket;
-
+        private final Semaphore semaphore = new Semaphore(1);
         public ClientHandler(Socket socket) {
             this.socket = socket;
         }
@@ -64,7 +62,8 @@ public class Server {
         @Override
         public void run() {
             try {
-
+                System.out.println(currentThread().getName());
+                Thread.sleep(10000);
 
                 // Obtém os fluxos de entrada e saída do cliente
                 InputStream inputStream = socket.getInputStream();
@@ -85,13 +84,17 @@ public class Server {
                 String messageForChat;
                 nome = message = reader.readLine();
                 String encodedMessage;
-                clientesConectados.add(nome);
-                indexofMe = clientesConectados.size() - 1;
-                System.out.println(indexofMe + " " + clientesConectados);
-                newClient(clientesConectados.toString(), writer);
-                messageForChat = nome + " entrou no chat";
-                encodedMessage = encrypt(messageForChat);
-                System.out.println(messageForChat);
+
+
+                    clientesConectados.add(nome);
+                    newClient(clientesConectados.toString(), writer);
+                    indexofMe = clientesConectados.size() - 1;
+                    System.out.println(indexofMe + " " + clientesConectados);
+                    messageForChat = nome + " entrou no chat";
+                    encodedMessage = encrypt(messageForChat);
+                    System.out.println(messageForChat);
+
+
 
 
 //                sendToAll(writer, encodedMessage);
@@ -106,15 +109,12 @@ public class Server {
                         System.out.println(encodedMessage);
                         sendToAll(writer, encodedMessage);
                     } catch (Exception e){
-
-                    } finally {
                         semaphore.release();
                     }
 
 
 
                 }
-
                 // Fecha o socket
                 clientesConectados.remove(indexofMe);
                 newClient(clientesConectados.toString(), writer);
@@ -124,14 +124,17 @@ public class Server {
             }
         }
         private void newClient(String clientsConnected, PrintWriter writer){
-            PrintWriter wr;
-            for(PrintWriter wrs : clientes){
-                try {
-                    wrs.println(encrypt(clientsConnected));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+            synchronized (clientsConnected){
+                PrintWriter wr;
+                for(PrintWriter wrs : clientes){
+                    try {
+                        wrs.println(encrypt(clientsConnected));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
+
         }
         //Manda a mensagem para todos os clientes
         private void sendToAll(PrintWriter writer, String msg) {

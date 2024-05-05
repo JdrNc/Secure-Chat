@@ -15,7 +15,7 @@ private static Cipher cipher;
         starrt(numConexoes);
     }
 
-    private static void starrt(int numConexoes) throws IOException {
+    private void starrt(int numConexoes) throws IOException {
         CountDownLatch latch = new CountDownLatch(numConexoes);
 
         for (int i = 0; i < numConexoes; i++) {
@@ -30,8 +30,10 @@ private static Cipher cipher;
                     System.out.println("cypher " + finalI);
                     cliente.setCipher(cipher);
                     cliente.conectar();
-                    cliente.iniciarEnvioMensagens(timeBetMsg);
-                    cliente.escutar();
+                    cliente.escutar(Thread.currentThread().getName());
+
+//                    cliente.iniciarEnvioMensagens(timeBetMsg);
+
 
                 } catch (IOException e) {
                     e.printStackTrace();

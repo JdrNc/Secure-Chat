@@ -23,15 +23,24 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER;
+import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS;
 
 public class ClienteForm extends JFrame implements ActionListener, KeyListener {
     private static SecretKey secretKey;
     private JLabel chatLabel;
     private JTextArea chatAll;
-    private static Cipher cipher;
-    private JTextField txtIP;
+    private Cipher cipher;
+    private static JTextField numClientes;
     private JTextField txtPorta;
     private JTextField txtNome;
+
+    private JScrollPane scroll;
     private JButton btnSend;
     private JButton btnSair;
     private JLabel onlineP;
@@ -41,18 +50,33 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
     private JLabel empetyLabel;
     private JLabel empetyLabel2;
     private JLabel empetyLabel3;
+    private JScrollPane scrollP;
     private Socket socket;
     private OutputStream ou;
     private Writer ouw;
     private BufferedWriter bfw;
 
-    public ClienteForm() throws IOException {
-        JLabel lblMessage = new JLabel("Verificar!");
-        txtIP = new JTextField("127.0.0.1");
-        txtPorta = new JTextField("12347");
-        txtNome = new JTextField("Cliente");
-        Object[] texts = {lblMessage, txtIP, txtPorta, txtNome};
-        JOptionPane.showMessageDialog(null, texts);
+
+    private String nome;
+    private ScheduledExecutorService scheduler;
+    private final Semaphore semaphore = new Semaphore(1);
+
+    public ClienteForm(String nome) throws IOException {
+//        JLabel lblMessage = new JLabel("Verificar!");
+//        numClientes = new JTextField("1");
+//        Object[] texts = {lblMessage, numClientes};
+//        JOptionPane.showMessageDialog(null, texts);
+
+//        chatAll = new JTextArea();
+        scroll = new JScrollPane(chatAll);
+        scrollP = new JScrollPane(onlineP);
+//        chatAll.setLineWrap(true);
+//        scroll.setViewportView(chatAll);
+//        pnlContent.remove(chatAll);
+//        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+//        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        pnlContent.add(scroll, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, 372), null, 0, false));
+        pnlContent.add(scrollP, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, 372), null, 0, false));
         chatAll.setEditable(false);
         onlinePeople.setEditable(false);
         btnSend.setToolTipText("Enviar Mensagem");
@@ -61,43 +85,48 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         btnSair.addActionListener(this);
         btnSend.addKeyListener(this);
         msgEnviar.addKeyListener(this);
-        chatAll.setLineWrap(true);
-        setTitle(txtNome.getText());
+        setTitle(nome);
         setContentPane(pnlContent);
         setLocationRelativeTo(null);
         setResizable(false);
-        setSize(500, 550);
+        setSize(450, 550);
         setVisible(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        this.nome = nome;
+
     }
 
     public void conectar() throws IOException {
 
-        socket = new Socket(txtIP.getText(), Integer.parseInt(txtPorta.getText()));
+        socket = new Socket("127.0.0.1", Integer.parseInt("12347"));
         ou = socket.getOutputStream();
         ouw = new OutputStreamWriter(ou);
         bfw = new BufferedWriter(ouw);
-        bfw.write(txtNome.getText() + "\r\n");
-        bfw.flush();
+//        bfw.write(nome + "\r\n");
+//        bfw.flush();
     }
 
     public void enviarMensagem(String msg) throws IOException {
 
         if (msg.equals("UserExitTheRoomMsg")) {
             try {
+                semaphore.acquire();
                 String disconected = "";
                 disconected = encrypt("Desconectado");
                 bfw.write(disconected + "\r\n");
                 chatAll.append("Desconectado \r\n");
             } catch (Exception e) {
+                Thread.currentThread().interrupt();
+
+            } finally {
+
             }
 
         } else {
             try {
                 String encodedMsg = encrypt(msg);
                 bfw.write(encodedMsg + "\r\n");
-//                System.out.println( txtNome.getText() + " diz -> " +         msgEnviar.getText()+"\r\n");
-                chatAll.append(txtNome.getText() + " diz -> " + msgEnviar.getText() + "\r\n");
+                chatAll.append(nome + " diz -> " + msgEnviar.getText() + "\r\n");
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -106,27 +135,24 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         msgEnviar.setText("");
     }
 
-    public void escutar() throws IOException {
-
+    public void escutar(String id) throws IOException, InterruptedException {
+//        socket = new Socket("127.0.0.1", Integer.parseInt("12347"));
         InputStream in = socket.getInputStream();
         InputStreamReader inr = new InputStreamReader(in);
         BufferedReader bfr = new BufferedReader(inr);
         String msg = "";
         msg = bfr.readLine();
-        System.out.println(msg);
 
         //Recebe chave do servidor
         byte[] decodedKey = Base64.getDecoder().decode(msg);
         secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-
+        System.out.println(id + "Escutando");
         while (!"UserExitTheRoomMsg".equalsIgnoreCase(msg)) {
             String decodedMsg = null;
             if (bfr.ready()) {
                 msg = bfr.readLine();
-                System.out.println(msg);
                 try {
                     decodedMsg = decrypt(msg);
-                    System.out.println(decodedMsg);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -146,7 +172,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         }
     }
 
-    private static String encrypt(String message) throws Exception {
+    private String encrypt(String message) throws Exception {
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         byte[] encryptedBytes = cipher.doFinal(message.getBytes());
         return Base64.getEncoder().encodeToString(encryptedBytes);
@@ -205,16 +231,32 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         // TODO Auto-generated method stub
     }
 
+
     public static void main(String[] args) throws IOException {
-        ClienteForm nc = new ClienteForm();
-        try {
-            cipher = Cipher.getInstance("AES");
-        } catch (Exception e) {
+
+//        try {
+//            cipher = Cipher.getInstance("AES");
+//        } catch (Exception e) {
+//        }
+
+
+    }
+
+    public void iniciarEnvioMensagens(int delayEntreEnvios) throws InterruptedException, IOException {
+        Thread.sleep(10000);
+        long lastCall = 0;
+
+        while (true) {
+            if (System.currentTimeMillis() - lastCall > 3000) {
+                lastCall = System.currentTimeMillis();
+                enviarMensagem("Mensagem enviada a cada " + delayEntreEnvios);
+            }
         }
 
-        nc.conectar();
-        nc.escutar();
+    }
 
+    public void setCipher(Cipher cipher) {
+        this.cipher = cipher;
     }
 
     {
@@ -281,6 +323,10 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         empetyLabel3 = new JLabel();
         empetyLabel3.setText("");
         pnlContent.add(empetyLabel3, new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        scroll = new JScrollPane();
+        pnlContent.add(scroll, new GridConstraints(1, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, new Dimension(0, 0), 0, false));
+        scrollP = new JScrollPane();
+        pnlContent.add(scrollP, new GridConstraints(5, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, new Dimension(0, 0), 0, false));
         onlineP.setLabelFor(onlinePeople);
         chatLabel.setLabelFor(chatAll);
     }
@@ -291,6 +337,6 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
     public JComponent $$$getRootComponent$$$() {
         return pnlContent;
     }
+
+
 }
-
-
