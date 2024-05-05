@@ -62,19 +62,9 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
     private final Semaphore semaphore = new Semaphore(1);
 
     public ClienteForm(String nome) throws IOException {
-//        JLabel lblMessage = new JLabel("Verificar!");
-//        numClientes = new JTextField("1");
-//        Object[] texts = {lblMessage, numClientes};
-//        JOptionPane.showMessageDialog(null, texts);
 
-//        chatAll = new JTextArea();
         scroll = new JScrollPane(chatAll);
         scrollP = new JScrollPane(onlineP);
-//        chatAll.setLineWrap(true);
-//        scroll.setViewportView(chatAll);
-//        pnlContent.remove(chatAll);
-//        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-//        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         pnlContent.add(scroll, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, 372), null, 0, false));
         pnlContent.add(scrollP, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, 372), null, 0, false));
         chatAll.setEditable(false);
@@ -102,8 +92,8 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         ou = socket.getOutputStream();
         ouw = new OutputStreamWriter(ou);
         bfw = new BufferedWriter(ouw);
-//        bfw.write(nome + "\r\n");
-//        bfw.flush();
+        bfw.write(nome + "\r\n");
+        bfw.flush();
     }
 
     public void enviarMensagem(String msg) throws IOException {
@@ -152,6 +142,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
             if (bfr.ready()) {
                 msg = bfr.readLine();
                 try {
+                    System.out.print("Messagem chega criptografada no cliente: " + msg + "\r\n");
                     decodedMsg = decrypt(msg);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -161,10 +152,12 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
                 } else if (decodedMsg.contains("newClientPass")) {
                     onlinePeople.setText("");
                     String[] newNome = decodedMsg.replace("newClientPass", "").replace("[", "").replace("]", "").split(", ");
+                    System.out.print("Messagem chega decriptografada no cliente: " + decodedMsg + "\r\n");
                     for (String nome : newNome) {
                         onlinePeople.append(nome + "\r\n");
                     }
                 } else {
+                    System.out.print("Messagem chega decriptografada no cliente: " + decodedMsg + "\r\n");
                     chatAll.append(decodedMsg + "\r\n");
                 }
 

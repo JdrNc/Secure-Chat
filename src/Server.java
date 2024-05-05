@@ -89,10 +89,9 @@ public class Server {
                     clientesConectados.add(nome);
                     newClient(clientesConectados.toString(), writer);
                     indexofMe = clientesConectados.size() - 1;
-                    System.out.println(indexofMe + " " + clientesConectados);
                     messageForChat = nome + " entrou no chat";
                     encodedMessage = encrypt(messageForChat);
-                    System.out.println(messageForChat);
+//                    System.out.println(messageForChat);
 
 
 
@@ -106,7 +105,8 @@ public class Server {
                         String decodedMsg = decrypt(message);
                         messageForChat = nome + " diz -> " + decodedMsg;
                         encodedMessage = encrypt(messageForChat);
-                        System.out.println(encodedMessage);
+                        System.out.println("Mensagem original no server: " + messageForChat + "\r\n");
+                        System.out.println("Mensagem criptografada no server: " + encodedMessage + "\r\n");
                         sendToAll(writer, encodedMessage);
                     } catch (Exception e){
                         semaphore.release();
@@ -128,7 +128,9 @@ public class Server {
                 PrintWriter wr;
                 for(PrintWriter wrs : clientes){
                     try {
-                        wrs.println(encrypt(clientsConnected));
+                        String encripted = encrypt(clientsConnected);
+                        System.out.print("Messagem criptografada: " + encripted + "\r\n");
+                        wrs.println(encripted);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }

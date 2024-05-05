@@ -9,9 +9,8 @@ private int numConexoes;
 private static int timeBetMsg;
 
 private static Cipher cipher;
-    public IniciarConexoesSimultaneas(int numConexoes, int timeBetMsg) throws IOException {
+    public IniciarConexoesSimultaneas(int numConexoes) throws IOException {
         this.numConexoes = numConexoes;
-        this.timeBetMsg = timeBetMsg;
         starrt(numConexoes);
     }
 
