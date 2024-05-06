@@ -5,9 +5,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -16,8 +14,12 @@ public class Server {
     private static SecretKey secretKey;
     private static Cipher cipher;
 
-    private static List<PrintWriter> clientes = new ArrayList<PrintWriter>();
-    private static List<String> clientesConectados = new ArrayList<String>();
+    private static List<PrintWriter> clientesSync = new ArrayList<PrintWriter>();
+
+    private static List<PrintWriter> clientes = Collections.synchronizedList(clientesSync);
+
+    private static List<String> clientesConectadosSync = new ArrayList<String>();
+    private static final List<String> clientesConectados = Collections.synchronizedList(clientesConectadosSync);
 
     public static void main(String[] args) {
         ExecutorService executor = Executors.newFixedThreadPool(100);
@@ -63,7 +65,7 @@ public class Server {
         public void run() {
             try {
                 System.out.println(currentThread().getName());
-                Thread.sleep(10000);
+                Thread.sleep(5000);
 
                 // Obtém os fluxos de entrada e saída do cliente
                 InputStream inputStream = socket.getInputStream();
@@ -72,7 +74,7 @@ public class Server {
                 // Cria um leitor e escritor para facilitar a comunicação
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                 PrintWriter writer = new PrintWriter(outputStream, true);
-                clientes.add(writer);
+
                 int indexofMe;
                 String message;
                 String nome;
@@ -85,12 +87,16 @@ public class Server {
                 nome = message = reader.readLine();
                 String encodedMessage;
 
+                    synchronized (this){
+                        clientes.add(writer);
+                        clientesConectados.add(nome);
+                        Thread.sleep(500);
+                        newClient(clientesConectados.toString(), writer);
+                        indexofMe = clientesConectados.size() - 1;
+                        messageForChat = nome + " entrou no chat";
+                        encodedMessage = encrypt(messageForChat);
+                    }
 
-                    clientesConectados.add(nome);
-                    newClient(clientesConectados.toString(), writer);
-                    indexofMe = clientesConectados.size() - 1;
-                    messageForChat = nome + " entrou no chat";
-                    encodedMessage = encrypt(messageForChat);
 //                    System.out.println(messageForChat);
 
 
@@ -101,7 +107,7 @@ public class Server {
                 // Loop para receber e enviar mensagens
                 while (!("UserExitTheRoomMsg".equalsIgnoreCase(message)) && (message = reader.readLine()) != null) {
                     try{
-                        semaphore.acquire();
+
                         String decodedMsg = decrypt(message);
                         messageForChat = nome + " diz -> " + decodedMsg;
                         encodedMessage = encrypt(messageForChat);
@@ -109,6 +115,8 @@ public class Server {
                         System.out.println("Mensagem criptografada no server: " + encodedMessage + "\r\n");
                         sendToAll(writer, encodedMessage);
                     } catch (Exception e){
+
+                    } finally {
                         semaphore.release();
                     }
 
@@ -124,10 +132,14 @@ public class Server {
             }
         }
         private void newClient(String clientsConnected, PrintWriter writer){
-            synchronized (clientsConnected){
+            synchronized (this){
                 PrintWriter wr;
+//                Iterator<PrintWriter> clientesIt = clientes.iterator();
                 for(PrintWriter wrs : clientes){
+
                     try {
+                        Thread.sleep(500);
+//                        PrintWriter wrs = clientesIt.next();
                         String encripted = encrypt(clientsConnected);
                         System.out.print("Messagem criptografada: " + encripted + "\r\n");
                         wrs.println(encripted);
@@ -140,12 +152,19 @@ public class Server {
         }
         //Manda a mensagem para todos os clientes
         private void sendToAll(PrintWriter writer, String msg) {
-            PrintWriter wr;
-            for(PrintWriter wrs : clientes){
-                wr = (PrintWriter) wrs;
-                if(!(writer == wr)){
-                    wrs.println(msg);
+            try{
+                semaphore.acquire();
+                PrintWriter wr;
+                for(PrintWriter wrs : clientes){
+                    wr = (PrintWriter) wrs;
+                    if(!(writer == wr)){
+                        wrs.println(msg);
+                    }
                 }
+            }catch (Exception e){
+
+            }finally {
+                semaphore.release();
             }
         }
         // Método para decriptar uma mensagem utilizando AES

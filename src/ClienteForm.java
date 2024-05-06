@@ -61,7 +61,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
     private ScheduledExecutorService scheduler;
     private final Semaphore semaphore = new Semaphore(1);
 
-    public ClienteForm(String nome) throws IOException {
+    public ClienteForm(String nome, Cipher cipher) throws IOException {
 
         scroll = new JScrollPane(chatAll);
         scrollP = new JScrollPane(onlineP);
@@ -83,6 +83,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         setVisible(true);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.nome = nome;
+        this.cipher = cipher;
 
     }
 
@@ -92,8 +93,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         ou = socket.getOutputStream();
         ouw = new OutputStreamWriter(ou);
         bfw = new BufferedWriter(ouw);
-        bfw.write(nome + "\r\n");
-        bfw.flush();
+
     }
 
     public void enviarMensagem(String msg) throws IOException {
@@ -132,11 +132,15 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
         BufferedReader bfr = new BufferedReader(inr);
         String msg = "";
         msg = bfr.readLine();
+        System.out.println(id + "Escutando");
+        Thread.sleep(5000);
+        bfw.write(nome + "\r\n");
+        bfw.flush();
 
         //Recebe chave do servidor
         byte[] decodedKey = Base64.getDecoder().decode(msg);
         secretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-        System.out.println(id + "Escutando");
+
         while (!"UserExitTheRoomMsg".equalsIgnoreCase(msg)) {
             String decodedMsg = null;
             if (bfr.ready()) {
@@ -160,7 +164,6 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
                     System.out.print("Messagem chega decriptografada no cliente: " + decodedMsg + "\r\n");
                     chatAll.append(decodedMsg + "\r\n");
                 }
-
             }
         }
     }
@@ -236,7 +239,7 @@ public class ClienteForm extends JFrame implements ActionListener, KeyListener {
     }
 
     public void iniciarEnvioMensagens(int delayEntreEnvios) throws InterruptedException, IOException {
-        Thread.sleep(10000);
+        Thread.sleep(2000);
         long lastCall = 0;
 
         while (true) {

@@ -25,13 +25,12 @@ private static Cipher cipher;
             int finalI = i;
             new Thread(() -> {
                 try {
-                    ClienteForm cliente = new ClienteForm("Cliente " + Integer.toString(finalI + 1));
+                    ClienteForm cliente = new ClienteForm("Cliente " + Integer.toString(finalI + 1), cipher);
                     System.out.println("cypher " + finalI);
-                    cliente.setCipher(cipher);
                     cliente.conectar();
                     cliente.escutar(Thread.currentThread().getName());
 
-//                    cliente.iniciarEnvioMensagens(timeBetMsg);
+                    cliente.iniciarEnvioMensagens(5);
 
 
                 } catch (IOException e) {
@@ -40,6 +39,7 @@ private static Cipher cipher;
                     throw new RuntimeException(e);
                 }
             }).start();
+
         }
 
 
